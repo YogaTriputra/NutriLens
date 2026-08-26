@@ -242,11 +242,125 @@ async def handle_meal_action(
         context.user_data.pop("pending_meal", None)
 
     elif query.data == "edit_meal":
+        context.user_data["awaiting_portion_edit"] = True
+
+        food_lines = [
+            f"{index}. {item['display_name']} — "
+            f"{item['portion_grams']:.0f} g"
+            for index, item in enumerate(pending_meal, start=1)
+        ]
+
         await query.message.reply_text(
-            "Fitur edit akan dibuat pada langkah berikutnya.\n\n"
-            "Nantinya Anda dapat mengoreksi nama makanan dan "
-            "porsi sebelum meal disimpan."
+            "Pilih makanan dan masukkan porsi baru dengan format:\n"
+            "nomor gram\n\n"
+            + "\n".join(food_lines)
+            + "\n\nContoh: 1 250"
         )
+
+
+async def edit_meal_portion(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    if not update.message or not update.message.text:
+        return
+
+    if not context.user_data.get("awaiting_portion_edit"):
+        return
+
+    pending_meal = context.user_data.get("pending_meal")
+
+    if not pending_meal:
+        context.user_data.pop("awaiting_portion_edit", None)
+        await update.message.reply_text(
+            "Data meal sementara tidak ditemukan. Silakan kirim foto kembali."
+        )
+        return
+
+    parts = update.message.text.split()
+
+    if len(parts) != 2:
+        await update.message.reply_text(
+            "Format belum benar. Gunakan: nomor gram\nContoh: 1 250"
+        )
+        return
+
+    try:
+        food_index = int(parts[0]) - 1
+        portion_grams = float(parts[1])
+    except ValueError:
+        await update.message.reply_text(
+            "Nomor dan porsi harus berupa angka. Contoh: 1 250"
+        )
+        return
+
+    if food_index < 0 or food_index >= len(pending_meal):
+        await update.message.reply_text("Nomor makanan tidak tersedia.")
+        return
+
+    if portion_grams <= 0 or portion_grams > 5000:
+        await update.message.reply_text(
+            "Porsi harus lebih dari 0 dan maksimal 5000 gram."
+        )
+        return
+
+    old_item = pending_meal[food_index]
+
+    try:
+        nutrition = await get_food_nutrition(
+            old_item["requested_name"],
+            portion_grams,
+        )
+    except Exception:
+        logging.exception("Perhitungan ulang nutrisi gagal")
+        await update.message.reply_text(
+            "Perhitungan ulang gagal. Silakan coba kembali."
+        )
+        return
+
+    nutrition["display_name"] = old_item["display_name"]
+    nutrition["confidence"] = old_item["confidence"]
+    pending_meal[food_index] = nutrition
+
+    context.user_data["pending_meal"] = pending_meal
+    context.user_data.pop("awaiting_portion_edit", None)
+
+    total_calories = sum(item["calories"] for item in pending_meal)
+    total_protein = sum(item["protein"] for item in pending_meal)
+    total_carbohydrates = sum(
+        item["carbohydrates"] for item in pending_meal
+    )
+    total_fat = sum(item["fat"] for item in pending_meal)
+    total_fiber = sum(item["fiber"] for item in pending_meal)
+
+    food_lines = [
+        f"- {item['display_name']} — {item['portion_grams']:.0f} g\n"
+        f"  Referensi USDA: {item['usda_name']}"
+        for item in pending_meal
+    ]
+
+    message = (
+        "HASIL SETELAH EDIT PORSI\n\n"
+        + "\n".join(food_lines)
+        + "\n\nESTIMASI NUTRISI\n"
+        + f"Kalori: {total_calories:.0f} kcal\n"
+        + f"Protein: {total_protein:.1f} g\n"
+        + f"Karbohidrat: {total_carbohydrates:.1f} g\n"
+        + f"Lemak: {total_fat:.1f} g\n"
+        + f"Serat: {total_fiber:.1f} g\n\n"
+        + "Hasil porsi dan nutrisi merupakan estimasi."
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Add Meal", callback_data="add_meal"),
+                InlineKeyboardButton("Edit", callback_data="edit_meal"),
+            ]
+        ]
+    )
+
+    await update.message.reply_text(message, reply_markup=keyboard)
 
 
 def main() -> None:
@@ -268,6 +382,9 @@ def main() -> None:
             handle_meal_action,
             pattern="^(add_meal|edit_meal)$",
         )
+    )
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, edit_meal_portion)
     )
 
     logging.info("NutriLens bot sedang berjalan...")
