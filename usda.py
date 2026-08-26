@@ -1,9 +1,39 @@
 import os
+import re
 
 import httpx
 
 USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 
+def normalize_words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z]+", text.lower()))
+
+
+def select_best_food(
+    foods: list[dict],
+    food_name: str,
+) -> dict:
+    query_words = normalize_words(food_name)
+
+    if not query_words:
+        return foods[0]
+
+    def calculate_score(food: dict) -> float:
+        description = food.get("description", "")
+        description_words = normalize_words(description)
+
+        matching_words = query_words & description_words
+        missing_words = query_words - description_words
+
+        score = len(matching_words) * 3
+        score -= len(missing_words) * 2
+
+        if food_name.lower() in description.lower():
+            score += 5
+
+        return score
+
+    return max(foods, key=calculate_score)
 
 def find_nutrient(
     nutrients: list[dict],
@@ -33,7 +63,7 @@ async def get_food_nutrition(
     parameters = {
         "api_key": api_key,
         "query": food_name,
-        "pageSize": 5,
+        "pageSize": 20,
         "dataType": ["Foundation", "SR Legacy"],
     }
 
@@ -51,7 +81,7 @@ async def get_food_nutrition(
             f"Data nutrisi untuk '{food_name}' tidak ditemukan."
         )
 
-    food = foods[0]
+    food = select_best_food(foods, food_name)
     nutrients = food.get("foodNutrients", [])
     multiplier = portion_grams / 100
 

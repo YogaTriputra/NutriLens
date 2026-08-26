@@ -4,13 +4,15 @@ import os
 from pathlib import Path
 import json
 
+
 from usda import get_food_nutrition
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -97,8 +99,6 @@ portion_grams harus berupa angka.
 
     return foods
 
-    return response.text
-
 
 async def receive_photo(
     update: Update,
@@ -165,7 +165,7 @@ async def receive_photo(
         for item in nutrition_results:
             food_lines.append(
                 f"- {item['display_name']} — "
-                f"~{item['portion_grams']:.0f} g\n"
+                f"{item['portion_grams']:.0f} g\n"
                 f"  Referensi USDA: {item['usda_name']}"
             )
 
@@ -173,22 +173,79 @@ async def receive_photo(
             "HASIL ANALISIS MAKANAN\n\n"
             + "\n".join(food_lines)
             + "\n\nESTIMASI NUTRISI\n"
-            + f"Kalori: ~{total_calories:.0f} kcal\n"
-            + f"Protein: ~{total_protein:.1f} g\n"
-            + f"Karbohidrat: ~{total_carbohydrates:.1f} g\n"
-            + f"Lemak: ~{total_fat:.1f} g\n"
-            + f"Serat: ~{total_fiber:.1f} g\n\n"
+            + f"Kalori: {total_calories:.0f} kcal\n"
+            + f"Protein: {total_protein:.1f} g\n"
+            + f"Karbohidrat: {total_carbohydrates:.1f} g\n"
+            + f"Lemak: {total_fat:.1f} g\n"
+            + f"Serat: {total_fiber:.1f} g\n\n"
             + "Hasil identifikasi, porsi, dan nutrisi merupakan "
             + "estimasi. Metode memasak dapat memengaruhi hasil."
         )
 
-        await update.message.reply_text(message)
+        context.user_data["pending_meal"] = nutrition_results
+
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Add Meal",
+                        callback_data="add_meal",
+                    ),
+                    InlineKeyboardButton(
+                        "Edit",
+                        callback_data="edit_meal",
+                    ),
+                ]
+            ]
+        )
+
+        await update.message.reply_text(
+            message,
+            reply_markup=keyboard,
+        )
 
     except Exception:
         logging.exception("Analisis makanan atau nutrisi gagal")
         await update.message.reply_text(
             "Maaf, analisis belum berhasil. "
             "Silakan periksa terminal atau coba foto lain."
+        )
+
+
+async def handle_meal_action(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    query = update.callback_query
+
+    if not query:
+        return
+
+    await query.answer()
+
+    pending_meal = context.user_data.get("pending_meal")
+
+    if not pending_meal:
+        await query.edit_message_reply_markup(reply_markup=None)
+        await query.message.reply_text(
+            "Data meal sementara tidak ditemukan. "
+            "Silakan kirim foto kembali."
+        )
+        return
+
+    if query.data == "add_meal":
+        await query.edit_message_reply_markup(reply_markup=None)
+        await query.message.reply_text(
+            "Meal berhasil dikonfirmasi.\n"
+            "Meal belum disimpan karena database belum tersedia."
+        )
+        context.user_data.pop("pending_meal", None)
+
+    elif query.data == "edit_meal":
+        await query.message.reply_text(
+            "Fitur edit akan dibuat pada langkah berikutnya.\n\n"
+            "Nantinya Anda dapat mengoreksi nama makanan dan "
+            "porsi sebelum meal disimpan."
         )
 
 
@@ -205,6 +262,12 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(
         MessageHandler(filters.PHOTO, receive_photo)
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            handle_meal_action,
+            pattern="^(add_meal|edit_meal)$",
+        )
     )
 
     logging.info("NutriLens bot sedang berjalan...")
