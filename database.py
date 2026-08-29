@@ -57,3 +57,41 @@ def save_meal(telegram_id: int, meal_item: dict) -> None:
                 ),
             )
         conn.commit()
+
+
+def get_todays_meals(telegram_id: int) -> list[dict]:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 
+                    food_name, 
+                    portion_grams, 
+                    calories, 
+                    protein, 
+                    carbohydrates, 
+                    fat, 
+                    fiber, 
+                    created_at
+                FROM meals
+                WHERE telegram_id = %s 
+                  AND created_at >= CURRENT_DATE
+                ORDER BY created_at ASC;
+                """,
+                (telegram_id,),
+            )
+            rows = cur.fetchall()
+
+            meals = []
+            for row in rows:
+                meals.append({
+                    "food_name": row[0],
+                    "portion_grams": float(row[1]),
+                    "calories": float(row[2]),
+                    "protein": float(row[3]),
+                    "carbohydrates": float(row[4]),
+                    "fat": float(row[5]),
+                    "fiber": float(row[6]),
+                    "created_at": row[7],
+                })
+            return meals

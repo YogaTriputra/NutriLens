@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-from database import save_meal
+from database import get_todays_meals, save_meal
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -161,25 +161,25 @@ async def receive_photo(
         )
 
         food_lines = []
-
         for item in nutrition_results:
             food_lines.append(
-                f"- {item['display_name']} — "
-                f"{item['portion_grams']:.0f} g\n"
-                f"  Referensi USDA: {item['usda_name']}"
+                f"• *{item['display_name']}* (~{item['portion_grams']:.0f}g)\n"
+                f"  └ _USDA: {item['usda_name']}_"
             )
 
         message = (
-            "HASIL ANALISIS MAKANAN\n\n"
+            "🍽️ *HASIL ANALISIS MAKANAN*\n"
+            "───────────────\n"
             + "\n".join(food_lines)
-            + "\n\nESTIMASI NUTRISI\n"
-            + f"Kalori: {total_calories:.0f} kcal\n"
-            + f"Protein: {total_protein:.1f} g\n"
-            + f"Karbohidrat: {total_carbohydrates:.1f} g\n"
-            + f"Lemak: {total_fat:.1f} g\n"
-            + f"Serat: {total_fiber:.1f} g\n\n"
-            + "Hasil identifikasi, porsi, dan nutrisi merupakan "
-            + "estimasi. Metode memasak dapat memengaruhi hasil."
+            + "\n\n📊 *ESTIMASI NUTRISI*\n"
+            "───────────────\n"
+            + f"🔥 *Kalori*: ~{total_calories:.0f} kcal\n"
+            + f"🥩 *Protein*: ~{total_protein:.1f} g\n"
+            + f"🌾 *Karbohidrat*: ~{total_carbohydrates:.1f} g\n"
+            + f"🥑 *Lemak*: ~{total_fat:.1f} g\n"
+            + f"🥦 *Serat*: ~{total_fiber:.1f} g\n\n"
+            + "💡 _Hasil identifikasi, porsi, dan nutrisi merupakan estimasi. "
+            + "Metode memasak dapat memengaruhi hasil._"
         )
 
         context.user_data["pending_meal"] = nutrition_results
@@ -188,11 +188,11 @@ async def receive_photo(
             [
                 [
                     InlineKeyboardButton(
-                        "Add Meal",
+                        "✅ Add Meal",
                         callback_data="add_meal",
                     ),
                     InlineKeyboardButton(
-                        "Edit",
+                        "✏️ Edit Porsi",
                         callback_data="edit_meal",
                     ),
                 ]
@@ -202,6 +202,7 @@ async def receive_photo(
         await update.message.reply_text(
             message,
             reply_markup=keyboard,
+            parse_mode="Markdown",
         )
 
     except Exception:
@@ -345,34 +346,89 @@ async def edit_meal_portion(
     total_fiber = sum(item["fiber"] for item in pending_meal)
 
     food_lines = [
-        f"- {item['display_name']} — {item['portion_grams']:.0f} g\n"
-        f"  Referensi USDA: {item['usda_name']}"
+        f"• *{item['display_name']}* (~{item['portion_grams']:.0f}g)\n"
+        f"  └ _USDA: {item['usda_name']}_"
         for item in pending_meal
     ]
 
     message = (
-        "HASIL SETELAH EDIT PORSI\n\n"
+        "✏️ *HASIL SETELAH EDIT PORSI*\n"
+        "───────────────\n"
         + "\n".join(food_lines)
-        + "\n\nESTIMASI NUTRISI\n"
-        + f"Kalori: {total_calories:.0f} kcal\n"
-        + f"Protein: {total_protein:.1f} g\n"
-        + f"Karbohidrat: {total_carbohydrates:.1f} g\n"
-        + f"Lemak: {total_fat:.1f} g\n"
-        + f"Serat: {total_fiber:.1f} g\n\n"
-        + "Hasil porsi dan nutrisi merupakan estimasi."
+        + "\n\n📊 *ESTIMASI NUTRISI*\n"
+        "───────────────\n"
+        + f"🔥 *Kalori*: ~{total_calories:.0f} kcal\n"
+        + f"🥩 *Protein*: ~{total_protein:.1f} g\n"
+        + f"🌾 *Karbohidrat*: ~{total_carbohydrates:.1f} g\n"
+        + f"🥑 *Lemak*: ~{total_fat:.1f} g\n"
+        + f"🥦 *Serat*: ~{total_fiber:.1f} g\n\n"
+        + "💡 _Hasil porsi dan nutrisi merupakan estimasi._"
     )
 
     keyboard = InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Add Meal", callback_data="add_meal"),
-                InlineKeyboardButton("Edit", callback_data="edit_meal"),
+                InlineKeyboardButton("✅ Add Meal", callback_data="add_meal"),
+                InlineKeyboardButton("✏️ Edit Porsi", callback_data="edit_meal"),
             ]
         ]
     )
 
-    await update.message.reply_text(message, reply_markup=keyboard)
+async def today_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    if not update.message:
+        return
 
+    telegram_id = update.effective_user.id
+
+    try:
+        meals = await asyncio.to_thread(get_todays_meals, telegram_id)
+    except Exception:
+        logging.exception("Gagal mengambil data makanan hari ini")
+        await update.message.reply_text(
+            "❌ Gagal mengambil data harian dari database."
+        )
+        return
+
+    if not meals:
+        await update.message.reply_text(
+            "📋 *NUTRISI HARI INI*\n"
+            "───────────────\n"
+            "Belum ada makanan yang dicatat hari ini.\n"
+            "Kirim foto makanan untuk mulai mencatat!",
+            parse_mode="Markdown",
+        )
+        return
+
+    total_calories = sum(m["calories"] for m in meals)
+    total_protein = sum(m["protein"] for m in meals)
+    total_carbohydrates = sum(m["carbohydrates"] for m in meals)
+    total_fat = sum(m["fat"] for m in meals)
+    total_fiber = sum(m["fiber"] for m in meals)
+
+    food_list = []
+    for item in meals:
+        food_list.append(
+            f"• *{item['food_name']}* (~{item['portion_grams']:.0f}g) — "
+            f"~{item['calories']:.0f} kcal"
+        )
+
+    message = (
+        "📊 *TOTAL NUTRISI HARI INI*\n"
+        "───────────────\n"
+        + f"🔥 *Kalori*: ~{total_calories:.0f} kcal\n"
+        + f"🥩 *Protein*: ~{total_protein:.1f} g\n"
+        + f"🌾 *Karbohidrat*: ~{total_carbohydrates:.1f} g\n"
+        + f"🥑 *Lemak*: ~{total_fat:.1f} g\n"
+        + f"🥦 *Serat*: ~{total_fiber:.1f} g\n\n"
+        + "🍽️ *DAFTAR MAKANAN HARI INI*\n"
+        "───────────────\n"
+        + "\n".join(food_list)
+    )
+
+    await update.message.reply_text(message, parse_mode="Markdown")
 
 def main() -> None:
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -383,6 +439,8 @@ def main() -> None:
         raise RuntimeError("GEMINI_API_KEY belum diatur di file .env.")
 
     application = Application.builder().token(telegram_token).build()
+    
+    application.add_handler(CommandHandler("today", today_command))
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(
