@@ -1,11 +1,9 @@
-import asyncio
+import json
 import logging
 import os
 from pathlib import Path
-import json
 
-
-from usda import get_food_nutrition
+from database import save_meal
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -18,6 +16,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from usda import get_food_nutrition
 
 load_dotenv()
 
@@ -235,11 +234,22 @@ async def handle_meal_action(
 
     if query.data == "add_meal":
         await query.edit_message_reply_markup(reply_markup=None)
-        await query.message.reply_text(
-            "Meal berhasil dikonfirmasi.\n"
-            "Meal belum disimpan karena database belum tersedia."
-        )
-        context.user_data.pop("pending_meal", None)
+
+        telegram_id = update.effective_user.id
+
+        try:
+            for item in pending_meal:
+                await asyncio.to_thread(save_meal, telegram_id, item)
+
+            await query.message.reply_text(
+                "✅ Meal berhasil disimpan ke database!"
+            )
+            context.user_data.pop("pending_meal", None)
+        except Exception:
+            logging.exception("Gagal menyimpan meal ke database")
+            await query.message.reply_text(
+                "❌ Gagal menyimpan meal. Silakan periksa koneksi database."
+            )
 
     elif query.data == "edit_meal":
         context.user_data["awaiting_portion_edit"] = True

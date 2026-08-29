@@ -14,12 +14,11 @@ Pengguna mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi mak
 - Estimasi ukuran porsi dalam gram
 - Pencarian data nutrisi melalui USDA FoodData Central
 - Estimasi total kalori, protein, karbohidrat, lemak, dan serat
+- Tombol **Add Meal** dan **Edit** porsi makanan
+- Penyimpanan data meal dan user ke database PostgreSQL (Supabase)
 
 ## Rencana Pengembangan
 
-- Koreksi makanan dan ukuran porsi sebelum disimpan
-- Tombol **Add Meal** dan **Edit**
-- Penyimpanan meal menggunakan PostgreSQL
 - Daily nutrition tracker melalui `/today`
 - Profil pengguna dan target kalori/makro
 - AI nutrition assistant berdasarkan data pengguna
@@ -31,9 +30,11 @@ Pengguna mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi mak
 - Telegram Bot API
 - Google Gemini Vision
 - USDA FoodData Central API
+- PostgreSQL (Supabase)
 - `python-telegram-bot`
 - `google-genai`
 - `httpx`
+- `psycopg`
 
 ## Cara Kerja
 
@@ -87,6 +88,7 @@ Isi `.env` dengan kredensial Anda:
 TELEGRAM_BOT_TOKEN=token_telegram_anda
 GEMINI_API_KEY=api_key_gemini_anda
 USDA_API_KEY=api_key_usda_anda
+DATABASE_URL=postgresql://postgres:password_database_anda@db.xxxxxxxx.supabase.co:5432/postgres
 ```
 
 Jangan membagikan atau memasukkan file `.env` ke Git.
@@ -104,7 +106,8 @@ Buka bot di Telegram, kirim `/start`, kemudian kirim foto makanan. Bot akan mena
 
 ```text
 NutriLens/
-├── bot.py              # Telegram bot dan analisis foto dengan Gemini
+├── bot.py              # Telegram bot, analisis foto, dan event handlers
+├── database.py         # Modul database PostgreSQL/Supabase
 ├── usda.py             # Pencarian dan perhitungan nutrisi USDA
 ├── test_usda.py        # Pengujian koneksi dan pencarian USDA
 ├── requirements.txt    # Dependensi Python
