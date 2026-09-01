@@ -12,7 +12,8 @@ Pengguna mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi mak
 - Menerima dan mengunduh foto makanan
 - Identifikasi makanan menggunakan Gemini Vision
 - Estimasi ukuran porsi dalam gram
-- Pencarian data nutrisi melalui USDA FoodData Central
+- Pencarian data nutrisi melalui USDA FoodData Central & FatSecret API (Makanan Indonesia)
+- Fallback AI Gemini jika makanan lokal tidak ditemukan di database
 - Estimasi total kalori, protein, karbohidrat, lemak, dan serat
 - Tombol **Add Meal** dan **Edit** porsi makanan
 - Penyimpanan data meal dan user ke database PostgreSQL (Supabase)

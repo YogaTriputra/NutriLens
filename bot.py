@@ -23,7 +23,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from usda import get_food_nutrition
+from nutrition_service import fetch_nutrition_with_fallback
 
 load_dotenv()
 
@@ -132,17 +132,16 @@ async def receive_photo(
 
         for food in foods:
             food_name = food["food_name"]
+            display_name = food.get("display_name", food_name)
             portion_grams = float(food["portion_grams"])
 
-            nutrition = await get_food_nutrition(
+            nutrition = await fetch_nutrition_with_fallback(
                 food_name,
+                display_name,
                 portion_grams,
             )
 
-            nutrition["display_name"] = food.get(
-                "display_name",
-                food_name,
-            )
+            nutrition["display_name"] = display_name
             nutrition["confidence"] = food.get(
                 "confidence",
                 "low",
@@ -325,8 +324,9 @@ async def edit_meal_portion(
     old_item = pending_meal[food_index]
 
     try:
-        nutrition = await get_food_nutrition(
+        nutrition = await fetch_nutrition_with_fallback(
             old_item["requested_name"],
+            old_item["display_name"],
             portion_grams,
         )
     except Exception:
