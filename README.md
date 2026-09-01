@@ -52,17 +52,20 @@ Pengguna dapat mengirim foto makanan ke bot. Google Gemini Vision mengidentifika
 
 ```text
 NutriLens/
-├── bot.py              # Telegram bot utama, event handler, & command handlers
-├── database.py         # Modul database PostgreSQL/Supabase (users & meals)
-├── nutrition_service.py# Modul pengatur strategi pencarian nutrisi (USDA -> FatSecret -> Gemini Fallback)
-├── usda.py             # Modul integrasi USDA FoodData Central API
-├── fatsecret.py        # Modul integrasi FatSecret Platform API (OAuth2 & Search)
-├── ai_assistant.py     # Modul AI Chat Assistant berdasarkan data harian user
-├── test_usda.py        # Script pengujian koneksi USDA API secara terpisah
-├── requirements.txt    # Daftar dependensi Python
-├── .env.example        # Contoh format variabel lingkungan (Environment Variables)
-├── .gitignore          # File & folder yang diabaikan oleh Git
-└── README.md           # Dokumentasi resmi proyek
+├── .venv/              # Environment virtual Python (diabaikan oleh Git)
+├── downloads/          # Folder penyimpanan foto makanan sementara (diabaikan oleh Git)
+├── .env                # Variabel lingkungan rahasia / API Keys (diabaikan oleh Git)
+├── .env.example        # Contoh format file konfigurasi environment
+├── .gitignore          # Daftar file/folder yang diabaikan Git
+├── README.md           # Dokumentasi resmi proyek
+├── ai_assistant.py     # Modul AI Assistant untuk percakapan & tanya jawab nutrisi
+├── bot.py              # Telegram bot utama, event handler, & daftar command
+├── database.py         # Modul koneksi PostgreSQL Supabase (manajemen user, profil, & meals)
+├── fatsecret.py        # Modul integrasi FatSecret Platform API (OAuth2 & pencarian makanan lokal)
+├── nutrition_service.py# Modul strategi pencarian nutrisi (USDA -> FatSecret -> Gemini Fallback)
+├── requirements.txt    # Daftar dependensi modul Python
+├── test_usda.py        # Script pengujian koneksi & pencarian USDA secara mandiri
+└── usda.py             # Modul integrasi USDA FoodData Central API
 ```
 
 ---
