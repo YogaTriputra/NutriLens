@@ -16,13 +16,13 @@ Pengguna mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi mak
 - Estimasi total kalori, protein, karbohidrat, lemak, dan serat
 - Tombol **Add Meal** dan **Edit** porsi makanan
 - Penyimpanan data meal dan user ke database PostgreSQL (Supabase)
+- Daily nutrition tracker melalui `/today`
+- Profil pengguna dan perhitungan target kalori/makronutrisi via `/profile` dan `/setprofile`
 
 ## Rencana Pengembangan
 
-- Daily nutrition tracker melalui `/today`
-- Profil pengguna dan target kalori/makro
 - AI nutrition assistant berdasarkan data pengguna
-- History dan statistik mingguan
+- History dan statistik mingguan via `/history` / `/week`
 
 ## Teknologi
 
