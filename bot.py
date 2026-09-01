@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 
+from ai_assistant import generate_ai_response
 from database import (
     get_todays_meals,
     get_user_profile,
@@ -670,6 +671,30 @@ async def today_command(
 
     await update.message.reply_text(message, parse_mode="Markdown")
 
+async def handle_ai_chat(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    if not update.message or not update.message.text:
+        return
+
+    if context.user_data.get("awaiting_portion_edit"):
+        await edit_meal_portion(update, context)
+        return
+
+    telegram_id = update.effective_user.id
+    user_query = update.message.text
+
+    await update.message.reply_text("🤔 *Sedang memikirkan jawaban...*", parse_mode="Markdown")
+
+    try:
+        reply = await asyncio.to_thread(generate_ai_response, telegram_id, user_query)
+        await update.message.reply_text(reply, parse_mode="Markdown")
+    except Exception:
+        logging.exception("Gagal memproses chat AI")
+        await update.message.reply_text("❌ Maaf, terjadi kesalahan saat menghubungi AI Assistant.")
+
+
 def main() -> None:
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not telegram_token:
@@ -707,7 +732,7 @@ def main() -> None:
         )
     )
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, edit_meal_portion)
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_chat)
     )
 
     logging.info("NutriLens bot sedang berjalan...")
