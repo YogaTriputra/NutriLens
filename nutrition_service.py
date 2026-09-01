@@ -54,24 +54,23 @@ Kembalikan HANYA JSON tanpa teks lain dengan struktur:
 
 
 async def fetch_nutrition_with_fallback(food_name: str, display_name: str, portion_grams: float) -> dict:
-    # 1. Coba USDA
-    try:
-        nutrition = await get_food_nutrition(food_name, portion_grams)
-        return nutrition
-    except Exception:
-        logging.info(f"USDA tidak menemukan '{food_name}', mencoba FatSecret...")
-
-    # 2. Coba FatSecret (Gunakan display_name untuk pencarian bahasa Indonesia lokal)
+    # 1. Coba FatSecret dulu jika nama makanan lokal Indonesia (display_name tersedia)
     try:
         nutrition = await search_fatsecret_food(display_name, portion_grams)
-        if not nutrition:
-            # Coba dengan food_name (Inggris) jika display_name tidak ditemukan
-            nutrition = await search_fatsecret_food(food_name, portion_grams)
         if nutrition:
             return nutrition
     except Exception:
-        logging.info(f"FatSecret tidak menemukan '{display_name}', mencoba Gemini Fallback...")
+        logging.info(f"FatSecret tidak menemukan '{display_name}'")
 
-    # 3. Fallback AI Gemini
+    # 2. Coba USDA jika bukan hidangan lokal yang unik
+    try:
+        nutrition = await get_food_nutrition(food_name, portion_grams)
+        # Jika USDA mengembalikan kecocokan kata yang buruk/aneh, biarkan ke fallback
+        if nutrition:
+            return nutrition
+    except Exception:
+        logging.info(f"USDA tidak menemukan '{food_name}'")
+
+    # 3. Fallback AI Gemini (Estimasi Paling Akurat untuk Makanan Khas)
     logging.info(f"Menggunakan Fallback Gemini AI untuk '{display_name}' ({portion_grams}g)...")
     return estimate_nutrition_gemini(display_name, portion_grams)
