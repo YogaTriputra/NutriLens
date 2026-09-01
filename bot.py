@@ -8,6 +8,7 @@ from ai_assistant import generate_ai_response
 from database import (
     get_todays_meals,
     get_user_profile,
+    get_weekly_history,
     save_meal,
     save_user_profile,
 )
@@ -668,8 +669,80 @@ async def today_command(
         "───────────────\n"
         + "\n".join(food_list)
     )
+    await update.message.reply_text(message, parse_mode="Markdown")
+
+
+async def history_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    if not update.message:
+        return
+
+    telegram_id = update.effective_user.id
+
+    try:
+        history = await asyncio.to_thread(get_weekly_history, telegram_id)
+        profile = await asyncio.to_thread(get_user_profile, telegram_id)
+    except Exception:
+        logging.exception("Gagal mengambil riwayat makanan mingguan")
+        await update.message.reply_text("❌ Gagal mengambil data riwayat dari database.")
+        return
+
+    if not history:
+        await update.message.reply_text(
+            "📅 *RIWAYAT & STATISTIK MINGGUAN*\n"
+            "───────────────\n"
+            "Belum ada catatan makanan selama 7 hari terakhir.\n"
+            "Mulai kirim foto makanan Anda!",
+            parse_mode="Markdown",
+        )
+        return
+
+    days_count = len(history)
+    avg_calories = sum(day["calories"] for day in history) / days_count
+    avg_protein = sum(day["protein"] for day in history) / days_count
+    avg_carbs = sum(day["carbs"] for day in history) / days_count
+    avg_fat = sum(day["fat"] for day in history) / days_count
+
+    target_cal = profile["target_calories"] if profile else None
+
+    daily_lines = []
+    day_names = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+
+    for day in history:
+        d_obj = day["date"]
+        d_str = d_obj.strftime("%d/%m")
+        day_name = day_names[d_obj.weekday()]
+
+        status_flag = ""
+        if target_cal:
+            diff = day["calories"] - target_cal
+            if abs(diff) <= 150:
+                status_flag = " 🎯"
+            elif diff > 150:
+                status_flag = " 📈"
+            else:
+                status_flag = " 📉"
+
+        daily_lines.append(
+            f"• *{day_name} ({d_str})*: ~{day['calories']:.0f} kcal ({day['total_meals']} meal){status_flag}"
+        )
+
+    message = (
+        "📅 *RIWAYAT MINGGUAN (7 HARI TERAKHIR)*\n"
+        "───────────────\n"
+        + "\n".join(daily_lines)
+        + "\n\n📈 *RATA-RATA HARIAN*\n"
+        "───────────────\n"
+        + f"🔥 *Rata-rata Kalori*: ~{avg_calories:.0f} kcal\n"
+        + f"🥩 *Rata-rata Protein*: ~{avg_protein:.1f} g\n"
+        + f"🌾 *Rata-rata Karbo*: ~{avg_carbs:.1f} g\n"
+        + f"🥑 *Rata-rata Lemak*: ~{avg_fat:.1f} g\n"
+    )
 
     await update.message.reply_text(message, parse_mode="Markdown")
+
 
 async def handle_ai_chat(
     update: Update,
@@ -721,6 +794,8 @@ def main() -> None:
     application.add_handler(profile_conv)
     application.add_handler(CommandHandler("profile", profile_command))
     application.add_handler(CommandHandler("today", today_command))
+    application.add_handler(CommandHandler("history", history_command))
+    application.add_handler(CommandHandler("week", history_command))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(
         MessageHandler(filters.PHOTO, receive_photo)

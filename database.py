@@ -220,3 +220,40 @@ def get_user_profile(telegram_id: int) -> dict | None:
                 "target_fiber": float(row[10]),
             }
 
+
+def get_weekly_history(telegram_id: int) -> list[dict]:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 
+                    DATE(created_at) AS meal_date,
+                    SUM(calories) AS total_calories,
+                    SUM(protein) AS total_protein,
+                    SUM(carbohydrates) AS total_carbs,
+                    SUM(fat) AS total_fat,
+                    SUM(fiber) AS total_fiber,
+                    COUNT(id) AS total_meals
+                FROM meals
+                WHERE telegram_id = %s 
+                  AND created_at >= CURRENT_DATE - INTERVAL '6 days'
+                GROUP BY DATE(created_at)
+                ORDER BY meal_date ASC;
+                """,
+                (telegram_id,),
+            )
+            rows = cur.fetchall()
+
+            history = []
+            for row in rows:
+                history.append({
+                    "date": row[0],
+                    "calories": float(row[1]),
+                    "protein": float(row[2]),
+                    "carbs": float(row[3]),
+                    "fat": float(row[4]),
+                    "fiber": float(row[5]),
+                    "total_meals": row[6],
+                })
+            return history
+

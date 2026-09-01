@@ -1,129 +1,104 @@
 # NutriLens
 
-NutriLens adalah chatbot Telegram berbasis AI untuk membantu pengguna mencatat asupan kalori dan nutrisi melalui foto makanan.
+NutriLens adalah chatbot Telegram berbasis AI untuk membantu pengguna mencatat dan memantau asupan kalori serta nutrisi harian melalui foto makanan.
 
-Pengguna mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi makanan dan memperkirakan porsinya, kemudian aplikasi mencari referensi nutrisi melalui USDA FoodData Central. Bot menampilkan estimasi kalori, protein, karbohidrat, lemak, dan serat.
+Pengguna dapat mengirim foto makanan ke bot. Google Gemini Vision mengidentifikasi makanan dan memperkirakan porsinya, kemudian aplikasi mencari data nutrisi melalui **USDA FoodData Central**, **FatSecret Platform API** (makanan Indonesia), atau **Fallback Gemini AI**. Bot menampilkan estimasi kalori, protein, karbohidrat, lemak, dan serat secara interaktif.
 
 > Hasil identifikasi makanan, ukuran porsi, dan nilai nutrisi merupakan estimasi. Metode memasak, bahan, dan ukuran sebenarnya dapat memengaruhi hasil. NutriLens bukan alat diagnosis atau pengganti saran medis.
 
-## Fitur Saat Ini
+---
 
-- Command Telegram `/start`
-- Menerima dan mengunduh foto makanan
-- Identifikasi makanan menggunakan Gemini Vision
-- Estimasi ukuran porsi dalam gram
-- Pencarian data nutrisi melalui USDA FoodData Central & FatSecret API (Makanan Indonesia)
-- Fallback AI Gemini jika makanan lokal tidak ditemukan di database
-- Estimasi total kalori, protein, karbohidrat, lemak, dan serat
-- Tombol **Add Meal** dan **Edit** porsi makanan
-- Penyimpanan data meal dan user ke database PostgreSQL (Supabase)
-- Daily nutrition tracker melalui `/today`
-- Profil pengguna dan perhitungan target kalori/makronutrisi via `/profile` dan `/setprofile`
-- AI Nutrition Assistant (Bisa tanya jawab bebas seputar nutrisi harian pengguna)
+## 🌟 Fitur Utama
 
-## Rencana Pengembangan
+1. **AI Vision Food Analysis**: Mengidentifikasi foto makanan dan memperkirakan porsi dalam gram.
+2. **Multi-Source Nutrition Lookup**:
+   - **USDA FoodData Central**: Untuk bahan makanan umum global.
+   - **FatSecret API**: Untuk makanan khas Indonesia (seperti Rendang, Klepon, dll).
+   - **Gemini AI Fallback**: Estimasi AI otomatis jika makanan tidak ada di database.
+3. **Konfirmasi & Edit Porsi**: Tombol **Add Meal** dan **Edit Porsi** sebelum data disimpan ke database.
+4. **PostgreSQL Database (Supabase)**: Menyimpan data pengguna dan riwayat asupan makanan secara aman.
+5. **Daily Nutrition Tracker (`/today`)**: Memantau total kalori dan makronutrisi harian disandingkan dengan target personal.
+6. **Profil & Target Kalori (`/profile` & `/setprofile`)**: Perhitungan TDEE dan target makronutrisi berdasarkan rumus Mifflin-St Jeor.
+7. **AI Nutrition Assistant**: Tanya jawab bebas seputar kondisi nutrisi harian dalam bahasa natural.
+8. **Weekly History & Statistics (`/history` / `/week`)**: Rekapitulasi kalori dan makronutrisi 7 hari terakhir beserta rata-rata harian.
 
-- History dan statistik mingguan via `/history` / `/week`
+---
 
-## Teknologi
+## 📱 Daftar Command Telegram
 
-- Python
-- Telegram Bot API
-- Google Gemini Vision
-- USDA FoodData Central API
-- PostgreSQL (Supabase)
-- `python-telegram-bot`
-- `google-genai`
-- `httpx`
-- `psycopg`
+- `/start` - Menampilkan pesan selamat datang dan petunjuk penggunaan.
+- `/setprofile` - Alur interaktif pembuatan/perbaruan profil fisik dan target kalori.
+- `/profile` - Menampilkan profil fisik dan target kebutuhan nutrisi harian.
+- `/today` - Menampilkan akumulasi nutrisi dan daftar makanan hari ini.
+- `/history` / `/week` - Menampilkan riwayat makanan dan rata-rata nutrisi 7 hari terakhir.
+- *Kirim Foto Makanan* - Menganalisis makanan dari foto.
+- *Kirim Pesan Teks Bebas* - Berdiskusi dengan AI Nutrition Assistant.
 
-## Cara Kerja
+---
 
-1. Pengguna mengirim foto makanan melalui Telegram.
-2. Bot mengunduh foto ke penyimpanan sementara.
-3. Gemini mengidentifikasi makanan dan memperkirakan berat porsinya.
-4. Nama makanan dicari melalui USDA FoodData Central.
-5. Nilai nutrisi per 100 gram disesuaikan dengan estimasi porsi.
-6. Bot mengirim hasil estimasi nutrisi kepada pengguna.
+## 🛠️ Teknologi
 
-## Persyaratan
+- **Python 3.10+**
+- **Telegram Bot API** (`python-telegram-bot`)
+- **Google Gemini 2.5 Flash** (`google-genai`)
+- **USDA FoodData Central API**
+- **FatSecret Platform API**
+- **PostgreSQL Database** (`psycopg` & Supabase)
+- **HTTP Client** (`httpx`)
 
-- Python 3.10 atau lebih baru
-- Telegram Bot Token dari BotFather
-- Google Gemini API Key
-- USDA FoodData Central API Key
+---
 
-## Instalasi
+## 📁 Struktur Project
 
-Clone repository dan masuk ke direktorinya:
+```text
+NutriLens/
+├── bot.py              # Telegram bot utama, event handler, & command handlers
+├── database.py         # Modul database PostgreSQL/Supabase (users & meals)
+├── nutrition_service.py# Modul pengatur strategi pencarian nutrisi (USDA -> FatSecret -> Gemini Fallback)
+├── usda.py             # Modul integrasi USDA FoodData Central API
+├── fatsecret.py        # Modul integrasi FatSecret Platform API (OAuth2 & Search)
+├── ai_assistant.py     # Modul AI Chat Assistant berdasarkan data harian user
+├── test_usda.py        # Script pengujian koneksi USDA API secara terpisah
+├── requirements.txt    # Daftar dependensi Python
+├── .env.example        # Contoh format variabel lingkungan (Environment Variables)
+├── .gitignore          # File & folder yang diabaikan oleh Git
+└── README.md           # Dokumentasi resmi proyek
+```
 
+---
+
+## 🚀 Cara Menjalankan Bot
+
+### 1. Clone Repository
 ```bash
 git clone https://github.com/YogaTriputra/NutriLens.git
 cd NutriLens
 ```
 
-Buat dan aktifkan virtual environment:
-
+### 2. Buat Virtual Environment & Instal Dependensi
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Instal dependensi:
-
-```bash
 python -m pip install -r requirements.txt
 ```
 
-## Konfigurasi
-
-Salin file konfigurasi contoh:
-
+### 3. Setup Konfigurasi `.env`
+Salin file konfigurasi:
 ```bash
 cp .env.example .env
 ```
-
-Isi `.env` dengan kredensial Anda:
-
+Isi file `.env` dengan kredensial API Anda:
 ```env
-TELEGRAM_BOT_TOKEN=token_telegram_anda
+TELEGRAM_BOT_TOKEN=token_bot_anda
 GEMINI_API_KEY=api_key_gemini_anda
 USDA_API_KEY=api_key_usda_anda
-DATABASE_URL=postgresql://postgres:password_database_anda@db.xxxxxxxx.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:password@host:5432/postgres
+FATSECRET_CLIENT_ID=client_id_fatsecret_anda
+FATSECRET_CLIENT_SECRET=client_secret_fatsecret_anda
 ```
 
-Jangan membagikan atau memasukkan file `.env` ke Git.
-
-## Menjalankan Bot
-
+### 4. Menjalankan Bot
 ```bash
 source .venv/bin/activate
 python bot.py
 ```
-
-Buka bot di Telegram, kirim `/start`, kemudian kirim foto makanan. Bot akan menampilkan hasil identifikasi dan estimasi nutrisi.
-
-## Struktur Project
-
-```text
-NutriLens/
-├── bot.py              # Telegram bot, analisis foto, dan event handlers
-├── database.py         # Modul database PostgreSQL/Supabase
-├── usda.py             # Pencarian dan perhitungan nutrisi USDA
-├── test_usda.py        # Pengujian koneksi dan pencarian USDA
-├── requirements.txt    # Dependensi Python
-├── .env.example        # Contoh environment variables
-└── .gitignore          # File dan folder yang tidak disimpan di Git
-```
-
-## Keterbatasan Saat Ini
-
-- Pemilihan hasil USDA masih menggunakan hasil pencarian pertama dan dapat tidak sesuai.
-- Cakupan makanan Indonesia di USDA terbatas.
-- Estimasi porsi dari satu foto dapat kurang akurat tanpa objek pembanding.
-- Data meal dan profil pengguna belum disimpan.
-- Fitur koreksi hasil sebelum penyimpanan belum tersedia.
-
-## Keamanan
-
-API key dan bot token harus disimpan sebagai environment variables dalam `.env`. Folder foto sementara dan file `.env` tidak boleh dimasukkan ke repository.
